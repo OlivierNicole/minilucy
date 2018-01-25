@@ -60,7 +60,9 @@ let () =
     let f = Parser.file Lexer.token lb in
     close_in c;
     if !parse_only then exit 0;
-    printf "Success!\n"
+    printf "Success!\n";
+    Ast_printer.file Format.std_formatter f;
+    print_newline ()
   with
     | Lexical_error s ->
 	report_loc (lexeme_start_p lb, lexeme_end_p lb);
