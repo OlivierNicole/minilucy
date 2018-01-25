@@ -1,7 +1,7 @@
 %{
 
   open Asttypes
-  open Parse_ast
+  open Ast
 
   let loc () = symbol_start_pos (), symbol_end_pos ()
   let mk_expr e = { pexpr_desc = e; pexpr_loc = loc () }
@@ -65,7 +65,7 @@
 /* Point d'entrée */
 
 %start file
-%type <Parse_ast.p_file> file
+%type <Ast.p_file> file
 
 %%
 

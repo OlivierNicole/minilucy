@@ -1,11 +1,8 @@
 OCAMLBUILD= ocamlbuild -no-links -classic-display \
-		-libs unix,nums,aez \
-		-cflags "-I ../../lib/aez-0.3" \
-		-lflags "-I ../../lib/aez-0.3" \
 		-tags debug,annot
 
 TARGET=native
-MAIN=lmoch
+MAIN=main
 
 all: $(MAIN)
 

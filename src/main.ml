@@ -5,7 +5,7 @@ open Format
 open Lexing
 open Lexer
 open Parser
-open Parse_ast
+open Ast
 
 let usage = "usage: "^Sys.argv.(0)^" [options] file.lus main"
 
@@ -60,20 +60,7 @@ let () =
     let f = Parser.file Lexer.token lb in
     close_in c;
     if !parse_only then exit 0;
-    let ft = Typing.type_file f main_node in
-    if !verbose then begin
-      Format.printf "/**************************************/@.";
-      Format.printf "/* Typed ast                          */@.";
-      Format.printf "/**************************************/@.";
-      Typed_ast_printer.print_node_list_std ft
-    end;
-    if !type_only then exit 0;
-    if main_node = "" then exit 0;
-
-    (* XXX TODO XXX *)
-    Format.printf "Don't know@.";
-
-    exit 0
+    printf "Success!\n"
   with
     | Lexical_error s ->
 	report_loc (lexeme_start_p lb, lexeme_end_p lb);
@@ -83,10 +70,6 @@ let () =
 	report_loc (lexeme_start_p lb, lexeme_end_p lb);
 	eprintf "syntax error\n@.";
 	exit 1
-    | Typing.Error(l,e) ->
-	report_loc l;
-	eprintf "%a\n@." Typing.report e;
-	exit 1
     | e ->
-        eprintf "Anomaly: %s\n@." (Printexc.to_string e);
+        eprintf "Fatal: %s\n@." (Printexc.to_string e);
         exit 2
