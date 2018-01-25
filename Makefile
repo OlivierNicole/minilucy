@@ -1,37 +1,25 @@
-OCAMLBUILD= ocamlbuild -no-links -classic-display \
-		-libs unix,nums,aez \
-		-cflags "-I ../../lib/aez-0.3" \
-		-lflags "-I ../../lib/aez-0.3" \
-		-tags debug,annot
 
-TARGET=native
-MAIN=lmoch
+all: src/minilucy
 
-all: $(MAIN)
+src/minilucy:# lib/aez-0.3/aez.cmxa FORCE
+	(cd src ; \
+	 $(MAKE))
 
-native: TARGET := native
-native: all
-opt: native
-$(MAIN).opt: native
-$(MAIN).native: native
-
-
-byte: TARGET := byte
-byte: all
-$(MAIN).byte: byte
-
-
-$(MAIN): $(MAIN).target
-	cp _build/$(MAIN).$(TARGET) $(MAIN)
-
-$(MAIN).target:
-	$(OCAMLBUILD) $(MAIN).$(TARGET)
-
+#lib/aez-0.3/aez.cmxa:
+#	(cd lib ; \
+#	 tar xvfz aez-0.3.tar.gz ; \
+#	 cd aez-0.3 ; \
+#	 ./configure ; \
+#	 $(MAKE))
 
 clean:
-	ocamlbuild -classic-display -clean
+	(cd src; $(MAKE) clean)
+	(cd examples; $(MAKE) clean)
 
-realclean: clean
-	rm -f $(MAIN) *~
+cleanall:
+	rm -f *~
+	(cd src; $(MAKE) cleanall)
+	(cd examples; $(MAKE) cleanall)
 
-cleanall: realclean
+FORCE:
+
