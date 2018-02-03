@@ -2,3 +2,4 @@
 *.pdf
 lmoch/
 _build
+src/main
