@@ -34,7 +34,11 @@ let rec type_expr node_env tenv { pexpr_desc = pdesc; pexpr_loc = loc } =
       let desc,ty = type_op o e1 e2 in
       { texpr_desc = desc; texpr_type = ty; texpr_loc = loc }
   | PE_app (node_id, expr_list) ->
+    begin try
+      let node = Env.find node_id node_env in
+      let texpr_list = List.map (type_expr node_env tenv) expr_list in
 
+    end
 
 and type_op o expr_list =
   match o with
