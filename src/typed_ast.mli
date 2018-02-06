@@ -4,10 +4,6 @@ open Asttypes
 
 type ident = string
 
-module Env = Map.Make(String)
-
-type env = base_ty Env.t
-
 type t_expr =
   { texpr_desc: t_expr_desc;
     texpr_type: base_ty;
