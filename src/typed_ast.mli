@@ -6,7 +6,7 @@ type ident = string
 
 type t_expr =
   { texpr_desc: t_expr_desc;
-    texpr_type: base_ty;
+    texpr_type: ty;
     texpr_loc: location; }
 
 and t_expr_desc =

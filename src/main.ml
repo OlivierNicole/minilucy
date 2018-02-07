@@ -7,6 +7,10 @@ open Lexer
 open Parser
 open Ast
 
+module XXX = struct
+  open Typing
+end
+
 let usage = "usage: "^Sys.argv.(0)^" [options] file.lus main"
 
 let parse_only = ref false
@@ -62,7 +66,7 @@ let () =
     if !parse_only then exit 0;
     printf "Success!\n";
     Ast_printer.file Format.std_formatter f;
-    print_newline ()
+    print_newline ();
   with
     | Lexical_error s ->
 	report_loc (lexeme_start_p lb, lexeme_end_p lb);
