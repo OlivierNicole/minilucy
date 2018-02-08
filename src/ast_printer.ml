@@ -24,6 +24,10 @@ let rec expr fmt exp =
       fprintf fmt "%a fby %a" const c expr e2
   | PE_tuple expr_list ->
       fprintf fmt "(%a)" (list ", " expr) expr_list
+  | PE_when (e, (id,_)) ->
+      fprintf fmt "%a when %s" expr e id
+  | PE_merge ((id,_), ift, iff) ->
+      fprintf fmt "merge %s (%a) (%a)" id expr ift expr iff
 
 and const fmt = function
   | Cbool b -> pp_print_bool fmt b

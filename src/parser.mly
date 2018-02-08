@@ -47,6 +47,8 @@
 %token VAR
 %token PIPE
 %token TYPE
+%token WHEN
+%token MERGE
 
 
 %nonassoc THEN
@@ -197,6 +199,15 @@ expr:
     { mk_expr (PE_fby ($1, $3)) }
 | LPAREN expr COMMA expr_comma_list RPAREN
     { mk_expr (PE_tuple ($2::$4)) }
+| expr WHEN localized_ident
+    { mk_expr (PE_when ($1, $3)) }
+| MERGE localized_ident expr expr
+    { mk_expr (PE_merge ($2, $3, $3)) }
+;
+
+localized_ident:
+| IDENT
+    { ($1, loc ()) }
 ;
 
 const:

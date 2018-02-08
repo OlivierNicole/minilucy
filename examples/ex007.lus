@@ -1,0 +1,13 @@
+node incr (tic: bool) returns (cpt: real);
+var tic2 : bool;
+let
+  tic2 = not tic;
+  cpt = (0. -> 0. fby cpt) + merge tic (1. when tic) (0. when tic2);
+tel;
+
+node check (x: bool) returns (ok: bool);
+var cpt : real;
+let
+  cpt = incr(x);
+  ok = true -> ((0. fby cpt) <= cpt);
+tel

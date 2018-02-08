@@ -81,6 +81,34 @@ let rec type_expr node_env loc_env { pexpr_desc = pdesc; pexpr_loc = loc } =
       { texpr_desc = TE_tuple texpr_list;
         texpr_type = List.concat @@ List.map (fun e -> e.texpr_type) texpr_list;
         texpr_loc = loc }
+  | PE_when (e, (var_id, var_id_loc)) ->
+    begin try
+      let ty_var = Env.find var_id loc_env in
+      if ty_var <> [Tbool] then
+        raise (Error (var_id_loc, Type_mismatch ([[Tbool]], ty_var)));
+      let te = type_expr node_env loc_env e in
+      { texpr_desc = TE_when (te, (var_id, var_id_loc));
+        texpr_type = te.texpr_type;
+        texpr_loc = loc }
+    with Not_found ->
+      raise (Error (var_id_loc, Undeclared_ident var_id))
+    end
+  | PE_merge ((var_id, var_id_loc), ift, iff) ->
+    begin try
+      let ty_var = Env.find var_id loc_env in
+      if ty_var <> [Tbool] then
+        raise (Error (var_id_loc, Type_mismatch ([[Tbool]], ty_var)));
+      let tift = type_expr node_env loc_env ift in
+      let tiff = type_expr node_env loc_env iff in
+      if tift.texpr_type <> tiff.texpr_type then
+        raise (Error (tiff.texpr_loc,
+          Type_mismatch ([tift.texpr_type], tiff.texpr_type)));
+      { texpr_desc = TE_merge ((var_id, var_id_loc), tift, tiff);
+        texpr_type = tift.texpr_type;
+        texpr_loc = loc }
+    with Not_found ->
+      raise (Error (var_id_loc, Undeclared_ident var_id))
+    end
 
 and type_op node_env loc_env o expr_list =
   match o, expr_list with

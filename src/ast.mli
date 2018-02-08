@@ -16,6 +16,8 @@ and p_expr_desc =
   | PE_arrow of p_expr * p_expr
   | PE_fby of const * p_expr
   | PE_tuple of p_expr list
+  | PE_when of p_expr * (ident * location)
+  | PE_merge of (ident * location) * p_expr * p_expr
 
 type p_patt =
   { ppatt_desc: p_patt_desc;
