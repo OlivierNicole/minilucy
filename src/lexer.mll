@@ -30,6 +30,7 @@
 	"then", THEN;
 	"true", CONST_BOOL(true);
 	"var", VAR;
+        "type", TYPE;
       ];
     fun s ->
       try Hashtbl.find h s with Not_found -> IDENT s
@@ -97,6 +98,8 @@ rule token = parse
       { EQUAL }
   | ","
       { COMMA }
+  | "|"
+      { PIPE }
   | _
       { raise (Lexical_error (lexeme lexbuf)) }
   | eof

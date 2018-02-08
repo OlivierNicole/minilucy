@@ -68,13 +68,13 @@ let rec type_expr node_env loc_env { pexpr_desc = pdesc; pexpr_loc = loc } =
       { texpr_desc = TE_arrow (te1,te2);
         texpr_type = ty1;
         texpr_loc = loc }
-  | PE_fby (e1,e2) ->
-      let {texpr_type = ty1} as te1 = type_expr node_env loc_env e1 in
+  | PE_fby (const,e2) ->
+      let ty_const = type_const const in
       let {texpr_type = ty2} as te2 = type_expr node_env loc_env e2 in
-      if ty1 <> ty2 then
-        raise (Error (te2.texpr_loc, Type_mismatch ([ty1], ty2)));
-      { texpr_desc = TE_fby (te1,te2);
-        texpr_type = ty1;
+      if ty_const <> ty2 then
+        raise (Error (te2.texpr_loc, Type_mismatch ([ty_const], ty2)));
+      { texpr_desc = TE_fby (const,te2);
+        texpr_type = ty_const;
         texpr_loc = loc }
   | PE_tuple expr_list ->
       let texpr_list = List.map (type_expr node_env loc_env) expr_list in
@@ -242,9 +242,13 @@ let type_node node_env node =
 
 let type_file file =
   let final_env = List.fold_left
-    (fun node_env node ->
-      let tnode = type_node node_env node in
-      Env.add tnode.tn_name tnode node_env
+    (fun node_env node_or_type ->
+      match node_or_type with
+      | Node_decl node ->
+          let tnode = type_node node_env node in
+          Env.add tnode.tn_name tnode node_env
+      | Type_decl _ ->
+          node_env
     )
     Env.empty
     file

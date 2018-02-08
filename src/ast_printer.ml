@@ -2,8 +2,10 @@ open Asttypes
 open Ast
 open Format
 
-let list pp_item fmt xs : unit =
-  pp_print_list ~pp_sep:(fun fmt () -> pp_print_string fmt ", ") pp_item fmt xs
+let list sep_string pp_item fmt xs : unit =
+  pp_print_list
+    ~pp_sep:(fun fmt () -> pp_print_string fmt sep_string)
+    pp_item fmt xs
 
 let rec expr fmt exp =
   match exp.pexpr_desc with
@@ -14,14 +16,14 @@ let rec expr fmt exp =
   | PE_app(f_id, expr_list) ->
       fprintf fmt "%s %a"
         f_id
-        (pp_print_list ~pp_sep:(fun fmt () -> pp_print_string fmt " ") expr)
+        (list " " expr)
         expr_list
   | PE_arrow(e1,e2) ->
       fprintf fmt "%a -> %a" expr e1 expr e2
-  | PE_fby (e1,e2) ->
-      fprintf fmt "%a fby %a" expr e1 expr e2
+  | PE_fby (c,e2) ->
+      fprintf fmt "%a fby %a" const c expr e2
   | PE_tuple expr_list ->
-      fprintf fmt "(%a)" (list expr) expr_list
+      fprintf fmt "(%a)" (list ", " expr) expr_list
 
 and const fmt = function
   | Cbool b -> pp_print_bool fmt b
@@ -73,7 +75,7 @@ and op fmt o expr_list =
 let pattern fmt pat =
   match pat.ppatt_desc with
   | PP_ident id -> fprintf fmt "%s" id
-  | PP_tuple ids -> fprintf fmt "(%a)" (list pp_print_string) ids
+  | PP_tuple ids -> fprintf fmt "(%a)" (list ", " pp_print_string) ids
 
 let equation fmt { peq_patt = pat; peq_expr = exp } =
   fprintf fmt "%a = %a" pattern pat expr exp
@@ -90,13 +92,18 @@ let node fmt n =
     pn_equs = \n  %a;\n\
     }"
     n.pn_name
-    (list typed_ident) n.pn_input
-    (list typed_ident) n.pn_output
-    (list typed_ident) n.pn_local
-    (pp_print_list
-      ~pp_sep:(fun fmt () -> pp_print_string fmt "\n  ") equation)
-      n.pn_equs
+    (list ", " typed_ident) n.pn_input
+    (list ", " typed_ident) n.pn_output
+    (list ", " typed_ident) n.pn_local
+    (list "\n  " equation) n.pn_equs
 
-let file fmt nodes =
-  pp_print_list ~pp_sep:(fun fmt () -> pp_print_string fmt "\n\n")
-    node fmt nodes
+let type_decl fmt td =
+  fprintf fmt "type %s = %a" td.pt_name
+    (list " | " pp_print_string) td.pt_constr
+
+let decl fmt = function
+  | Node_decl nd -> node fmt nd
+  | Type_decl td -> type_decl fmt td
+
+let file fmt decls =
+  list "\n\n" decl fmt decls

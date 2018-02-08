@@ -45,6 +45,8 @@
 %token TEL
 %token THEN
 %token VAR
+%token PIPE
+%token TYPE
 
 
 %nonassoc THEN
@@ -67,12 +69,13 @@
 
 %%
 
-file: node_decs EOF { $1 }
+file: decs EOF { $1 }
 ;
 
-node_decs:
+decs:
 | /* empty */       { [] }
-| node node_decs    { $1 :: $2 }
+| node decs    { Node_decl $1 :: $2 }
+| typedecl decs { Type_decl $1 :: $2 }
 ;
 
 
@@ -153,7 +156,7 @@ expr:
 | LPAREN expr RPAREN
     { $2 }
 | const
-    { $1 }
+    { mk_expr (PE_const $1) }
 | IDENT
     { mk_expr (PE_ident $1)}
 | IDENT LPAREN expr_comma_list_empty RPAREN
@@ -190,7 +193,7 @@ expr:
     { mk_expr (PE_op (Op_sub, [$2])) }
 | NOT expr
     { mk_expr (PE_op (Op_not, [$2])) }
-| expr FBY expr
+| const FBY expr
     { mk_expr (PE_fby ($1, $3)) }
 | LPAREN expr COMMA expr_comma_list RPAREN
     { mk_expr (PE_tuple ($2::$4)) }
@@ -198,11 +201,11 @@ expr:
 
 const:
 | CONST_BOOL
-    { mk_expr (PE_const (Cbool $1)) }
+    { Cbool $1 }
 | CONST_INT
-    { mk_expr (PE_const (Cint $1)) }
+    { Cint $1 }
 | CONST_REAL
-    { mk_expr (PE_const (Creal $1)) }
+    { Creal $1 }
 ;
 
 ident_comma_list:
@@ -232,4 +235,16 @@ semi_opt:
     { () }
 | SEMICOL
     { () }
+;
+
+typedecl:
+| TYPE IDENT EQUAL constr_list semi_opt
+    { { pt_name = $2;
+        pt_constr = $4;
+        pt_loc = loc (); } }
+;
+
+constr_list:
+| IDENT { [$1] }
+| IDENT PIPE constr_list { $1 :: $3 }
 ;

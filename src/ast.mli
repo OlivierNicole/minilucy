@@ -14,7 +14,7 @@ and p_expr_desc =
   | PE_op of op * p_expr list
   | PE_app of ident * p_expr list
   | PE_arrow of p_expr * p_expr
-  | PE_fby of p_expr * p_expr
+  | PE_fby of const * p_expr
   | PE_tuple of p_expr list
 
 type p_patt =
@@ -37,4 +37,13 @@ type p_node =
       pn_equs: p_equation list;
       pn_loc: location; }
 
-type p_file = p_node list
+type p_type =
+  { pt_name: ident;
+    pt_constr: ident list;
+    pt_loc: location; }
+
+type p_decl =
+  | Node_decl of p_node
+  | Type_decl of p_type
+
+type p_file = p_decl list

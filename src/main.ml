@@ -60,9 +60,8 @@ let () =
     let f = Parser.file Lexer.token lb in
     close_in c;
     if !parse_only then exit 0;
-    Format.printf "Success!\n";
     Ast_printer.file Format.std_formatter f;
-    Format.print_newline ();
+    Format.printf "\n\n%!";
     let tf = Typing.type_file f in
     Tast_printer.file Format.std_formatter tf;
     print_newline ()
