@@ -82,7 +82,7 @@ let typed_ident fmt (id, ty) =
   fprintf fmt "%s : %a" id Asttypes.print_base_ty ty
 
 let node fmt n =
-  fprintf fmt "p_node {\n\
+  fprintf fmt "t_node {\n\
     tn_name = %s;\n\
     tn_input = %a;\n\
     tn_output = %a;\n\

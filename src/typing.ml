@@ -44,9 +44,6 @@ let rec type_expr node_env loc_env { pexpr_desc = pdesc; pexpr_loc = loc } =
       { texpr_desc = desc; texpr_type = ty; texpr_loc = loc }
   | PE_app (node_id, expr_list) ->
     begin try
-      Format.eprintf "before\n";
-      List.iter (Format.eprintf "env: %s\n%!") @@ List.map fst @@ Env.bindings node_env;
-      Format.eprintf "after\n";
       let node = Env.find node_id node_env in
       let texpr_list = List.map (type_expr node_env loc_env) expr_list in
       (* Flatten tuples in the argument types *)
@@ -65,10 +62,9 @@ let rec type_expr node_env loc_env { pexpr_desc = pdesc; pexpr_loc = loc } =
     end
   | PE_arrow (e1,e2) ->
       let {texpr_type = ty1} as te1 = type_expr node_env loc_env e1 in
-      Format.eprintf "PE_arrow: %a\n%!" Asttypes.print_ty ty1;
       let {texpr_type = ty2} as te2 = type_expr node_env loc_env e2 in
       if ty1 <> ty2 then
-        raise (Error (loc, Type_mismatch ([ty1], ty2)));
+        raise (Error (te2.texpr_loc, Type_mismatch ([ty1], ty2)));
       { texpr_desc = TE_arrow (te1,te2);
         texpr_type = ty1;
         texpr_loc = loc }
@@ -126,7 +122,7 @@ and type_op node_env loc_env o expr_list =
       if ty1 <> ty2 then
         raise (Error (e2.pexpr_loc, Type_mismatch ([ty1], ty2)));
       let result_type = match o with
-      | Op_eq | Op_neq -> [Tbool]
+      | Op_eq | Op_neq | Op_lt | Op_le | Op_gt | Op_ge -> [Tbool]
       | _ -> ty1
       in
       (TE_op (o, [te1;te2]), result_type)
@@ -155,9 +151,7 @@ let type_equation node_env loc_env { peq_patt = pat; peq_expr = e } =
   | PP_ident id ->
     begin try
       let expected_ty = Env.find id loc_env in
-      Format.eprintf "type_equation: expects %a\n%!" print_ty expected_ty;
       let te = type_expr node_env loc_env e in
-      Format.eprintf "type_equation: got %a\n%!" print_ty te.texpr_type;
       if te.texpr_type <> expected_ty then
         raise (Error (te.texpr_loc,
           Type_mismatch ([expected_ty], te.texpr_type)));
@@ -211,7 +205,6 @@ module StringSet = Set.Make(String)
      local types.
  *)
 let type_node node_env node =
-  Format.eprintf "type_node: %s\n" node.pn_name;
   if Env.mem node.pn_name node_env then
     raise (Error (node.pn_loc, Duplicate_node_decl node.pn_name));
   (* Check that all identifiers are declared once *)
