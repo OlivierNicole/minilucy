@@ -7,10 +7,6 @@ open Lexer
 open Parser
 open Ast
 
-module XXX = struct
-  open Typing
-end
-
 let usage = "usage: "^Sys.argv.(0)^" [options] file.lus main"
 
 let parse_only = ref false
@@ -67,6 +63,9 @@ let () =
     printf "Success!\n";
     Ast_printer.file Format.std_formatter f;
     print_newline ();
+    let tf = Typing.type_file f in
+    Tast_printer.file Format.std_formatter tf;
+    print_newline ()
   with
     | Lexical_error s ->
 	report_loc (lexeme_start_p lb, lexeme_end_p lb);
@@ -76,6 +75,11 @@ let () =
 	report_loc (lexeme_start_p lb, lexeme_end_p lb);
 	eprintf "syntax error\n@.";
 	exit 1
+    | Typing.Error (loc, err) ->
+        report_loc (fst loc, snd loc);
+        Typing.report_error Format.err_formatter err;
+        eprintf "\n";
+        exit 1
     | e ->
         eprintf "Fatal: %s\n@." (Printexc.to_string e);
         exit 2

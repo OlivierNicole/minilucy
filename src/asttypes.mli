@@ -7,6 +7,9 @@ type base_ty =
 
 type ty = base_ty list
 
+val print_base_ty : Format.formatter -> base_ty -> unit
+val print_ty : Format.formatter -> ty -> unit
+
 type const =
   | Cbool of bool
   | Cint of int

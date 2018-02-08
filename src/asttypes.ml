@@ -18,3 +18,20 @@ type op =
   | Op_not
   | Op_and | Op_or | Op_impl
   | Op_if
+
+open Format
+
+let print_base_ty fmt = function
+  | Tbool -> pp_print_string fmt "bool"
+  | Tint -> pp_print_string fmt "int"
+  | Treal -> pp_print_string fmt "real"
+
+let print_ty fmt = function
+  | [] -> assert false
+  | [bty] -> print_base_ty fmt bty
+  | bty_list ->
+      pp_print_list
+        ~pp_sep:(fun fmt () -> pp_print_string fmt " * ")
+        print_base_ty
+        fmt
+        bty_list
