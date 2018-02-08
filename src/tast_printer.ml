@@ -18,8 +18,8 @@ let rec expr fmt exp =
         expr_list
   | TE_arrow(e1,e2) ->
       fprintf fmt "%a -> %a" expr e1 expr e2
-  | TE_pre e ->
-      fprintf fmt "pre %a" expr e
+  | TE_fby (e1,e2) ->
+      fprintf fmt "%a fby %a" expr e1 expr e2
   | TE_tuple expr_list ->
       fprintf fmt "(%a)" (list expr) expr_list
 

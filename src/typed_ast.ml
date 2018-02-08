@@ -15,7 +15,7 @@ and t_expr_desc =
   | TE_op of op * t_expr list
   | TE_app of ident * t_expr list
   | TE_arrow of t_expr * t_expr
-  | TE_pre of t_expr
+  | TE_fby of t_expr * t_expr
   | TE_tuple of t_expr list
 
 type t_patt =

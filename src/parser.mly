@@ -36,7 +36,7 @@
 %token NOT
 %token OR
 %token PLUS
-%token PRE
+%token FBY
 %token RETURNS
 %token RPAREN
 %token SEMICOL
@@ -57,8 +57,8 @@
 %left PLUS MINUS                              /* + -  */
 %left STAR SLASH DIV MOD                      /* * /  mod */
 %nonassoc uminus                              /* - */
-%nonassoc NOT PRE                             /* not pre */
-%left DOT
+%left FBY
+%nonassoc NOT                                 /* not */
 
 /* Point d'entrée */
 
@@ -190,8 +190,8 @@ expr:
     { mk_expr (PE_op (Op_sub, [$2])) }
 | NOT expr
     { mk_expr (PE_op (Op_not, [$2])) }
-| PRE expr
-    { mk_expr (PE_pre ($2)) }
+| expr FBY expr
+    { mk_expr (PE_fby ($1, $3)) }
 | LPAREN expr COMMA expr_comma_list RPAREN
     { mk_expr (PE_tuple ($2::$4)) }
 ;
