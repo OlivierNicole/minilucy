@@ -13,10 +13,8 @@
       [
 	"and", AND;
 	"bool", BOOL;
-	"const", CONST;
         "div", DIV;
 	"else", ELSE;
-	"end", END;
 	"false", CONST_BOOL(false);
 	"if", IF;
 	"int", INT;

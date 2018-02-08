@@ -12,7 +12,6 @@
 %token AND
 %token ARROW
 %token BOOL
-%token CONST
 %token COLON
 %token COMMA
 %token <Asttypes.op> COMP
@@ -21,7 +20,6 @@
 %token <float> CONST_REAL
 %token DIV
 %token ELSE
-%token END
 %token EOF
 %token EQUAL
 %token NEQ
