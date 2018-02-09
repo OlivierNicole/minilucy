@@ -6,6 +6,8 @@ open Lexing
 open Lexer
 open Parser
 open Ast
+open Typed_ast
+open Scheduling
 
 let usage = "usage: "^Sys.argv.(0)^" [options] file.lus main"
 
@@ -64,7 +66,14 @@ let () =
     Format.printf "\n\n%!";
     let tf = Typing.type_file f in
     Tast_printer.file Format.std_formatter tf;
-    print_newline ()
+    print_newline ();
+    let scheduled = List.map
+      (fun node -> schedule (List.map fst node.tn_input) node.tn_equs)
+      tf
+    in
+    List.iter
+      (List.iter (Format.printf "%a\n" Tast_printer.equation))
+      scheduled
   with
     | Lexical_error s ->
 	report_loc (lexeme_start_p lb, lexeme_end_p lb);
