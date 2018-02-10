@@ -31,7 +31,7 @@ let rec direct_deps expr = match expr.texpr_desc with
     S.union (direct_deps e1) (direct_deps e2)
 | TE_fby (_,_) ->
     S.empty
-| TE_when (e, (id,_)) ->
+| TE_when (e, _, (id,_)) ->
     S.add id (direct_deps e)
 | TE_merge ((id,_), ift, iff) ->
     S.add id @@ S.union (direct_deps ift) (direct_deps iff)

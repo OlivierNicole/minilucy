@@ -199,8 +199,8 @@ expr:
     { mk_expr (PE_fby ($1, $3)) }
 | LPAREN expr COMMA expr_comma_list RPAREN
     { mk_expr (PE_tuple ($2::$4)) }
-| expr WHEN localized_ident
-    { mk_expr (PE_when ($1, $3)) }
+| expr WHEN CONST_BOOL LPAREN localized_ident RPAREN
+    { mk_expr (PE_when ($1, $3, $5)) }
 | MERGE localized_ident expr expr
     { mk_expr (PE_merge ($2, $3, $3)) }
 ;

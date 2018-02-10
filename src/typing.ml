@@ -81,13 +81,13 @@ let rec type_expr node_env loc_env { pexpr_desc = pdesc; pexpr_loc = loc } =
       { texpr_desc = TE_tuple texpr_list;
         texpr_type = List.concat @@ List.map (fun e -> e.texpr_type) texpr_list;
         texpr_loc = loc }
-  | PE_when (e, (var_id, var_id_loc)) ->
+  | PE_when (e, b, (var_id, var_id_loc)) ->
     begin try
       let ty_var = Env.find var_id loc_env in
       if ty_var <> [Tbool] then
         raise (Error (var_id_loc, Type_mismatch ([[Tbool]], ty_var)));
       let te = type_expr node_env loc_env e in
-      { texpr_desc = TE_when (te, (var_id, var_id_loc));
+      { texpr_desc = TE_when (te, b, (var_id, var_id_loc));
         texpr_type = te.texpr_type;
         texpr_loc = loc }
     with Not_found ->

@@ -17,7 +17,7 @@ and t_expr_desc =
   | TE_arrow of t_expr * t_expr
   | TE_fby of const * t_expr
   | TE_tuple of t_expr list
-  | TE_when of t_expr * (ident * location)
+  | TE_when of t_expr * bool * (ident * location)
   | TE_merge of (ident * location) * t_expr * t_expr
 
 type t_patt =
