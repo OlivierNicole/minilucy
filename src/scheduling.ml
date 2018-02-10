@@ -1,9 +1,7 @@
 (* The scheduling consists in the topological sort of a graph of variables.
- * the nodes of the graph are the equations
-   * an edge goes from equation A to equation B iff A has a direct dependency
-   * to a variable defined by B.
- * It is necessary to maintain a map from variable names to their defining
- * equations.
+   * the nodes of the graph are variable names
+   * an edge goes from variable A to variable B iff A's defining equation has a
+     direct dependency to B.
  *)
 
 open Typed_ast
