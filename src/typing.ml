@@ -2,25 +2,29 @@ open Asttypes
 open Ast
 module T = Typed_ast
 open T
+open Ident
 
 type error =
-  | Unbound_ident of T.ident
+  | Unbound_ident of string
   | Type_mismatch of ty list * ty
       (* list of possible types, actual type *)
-  | Undeclared_ident of T.ident
+  | Undeclared_ident of string
       (* When an equation defines a identifier that is not declared as a local
        * variable *)
-  | Duplicate_node_decl of T.ident
+  | Duplicate_node_decl of string
       (* When there are two node declarations with the same name *)
-  | Duplicate_local_decl of T.ident
+  | Duplicate_local_decl of string
       (* When a local identifier is declared more than once in a node. *)
-  | Undefined_local of T.ident
+  | Undefined_local of ident
 
 exception Error of location * error
 
+(* For expressions generated while desugaring *)
+let dummy_loc = Lexing.(dummy_pos, dummy_pos)
+
 module Env = Map.Make(String)
 
-type env = base_ty Env.t
+type env = (base_ty * ident) Env.t
 type node_env = t_node Env.t
 
 let type_const = function
@@ -29,19 +33,25 @@ let type_const = function
   | Creal _ -> [Treal]
 
 let rec type_expr node_env loc_env { pexpr_desc = pdesc; pexpr_loc = loc } =
+  let mkexpr desc ty =
+    { texpr_desc = desc;
+      texpr_type = ty;
+      texpr_clock = [Clock.Ck_base];
+      texpr_loc = loc }
+  in
   match pdesc with
   | PE_const c ->
-      { texpr_desc = TE_const c; texpr_type = type_const c; texpr_loc = loc }
+      mkexpr (TE_const c) (type_const c)
   | PE_ident id ->
     begin try
-      let ty = Env.find id loc_env in
-      { texpr_desc = TE_ident id; texpr_type = ty; texpr_loc = loc }
+      let ty,lid = Env.find id loc_env in
+      mkexpr (TE_ident lid) ty
     with Not_found ->
       raise (Error (loc, Unbound_ident id))
     end
   | PE_op (o, expr_list) ->
       let desc,ty = type_op node_env loc_env o expr_list in
-      { texpr_desc = desc; texpr_type = ty; texpr_loc = loc }
+      mkexpr desc ty
   | PE_app (node_id, expr_list) ->
     begin try
       let node = Env.find node_id node_env in
@@ -54,9 +64,7 @@ let rec type_expr node_env loc_env { pexpr_desc = pdesc; pexpr_loc = loc } =
       (* Check identity between input types and argument types *)
       if args_ty <> input_ty then
         raise (Error (loc, Type_mismatch ([input_ty], args_ty)));
-      { texpr_desc = TE_app (node_id, texpr_list);
-        texpr_type = List.map snd node.tn_output;
-        texpr_loc = loc }
+      mkexpr (TE_app (node_id, texpr_list)) (List.map snd node.tn_output)
     with Not_found ->
       raise (Error (loc, Unbound_ident node_id))
     end
@@ -65,37 +73,31 @@ let rec type_expr node_env loc_env { pexpr_desc = pdesc; pexpr_loc = loc } =
       let {texpr_type = ty2} as te2 = type_expr node_env loc_env e2 in
       if ty1 <> ty2 then
         raise (Error (te2.texpr_loc, Type_mismatch ([ty1], ty2)));
-      { texpr_desc = TE_arrow (te1,te2);
-        texpr_type = ty1;
-        texpr_loc = loc }
+      mkexpr (TE_arrow (te1,te2)) ty1
   | PE_fby (const,e2) ->
       let ty_const = type_const const in
       let {texpr_type = ty2} as te2 = type_expr node_env loc_env e2 in
       if ty_const <> ty2 then
         raise (Error (te2.texpr_loc, Type_mismatch ([ty_const], ty2)));
-      { texpr_desc = TE_fby (const,te2);
-        texpr_type = ty_const;
-        texpr_loc = loc }
+      mkexpr (TE_fby (const,te2)) ty_const
   | PE_tuple expr_list ->
       let texpr_list = List.map (type_expr node_env loc_env) expr_list in
-      { texpr_desc = TE_tuple texpr_list;
-        texpr_type = List.concat @@ List.map (fun e -> e.texpr_type) texpr_list;
-        texpr_loc = loc }
+      mkexpr
+        (TE_tuple texpr_list)
+        (List.concat @@ List.map (fun e -> e.texpr_type) texpr_list)
   | PE_when (e, b, (var_id, var_id_loc)) ->
     begin try
-      let ty_var = Env.find var_id loc_env in
+      let ty_var,lid = Env.find var_id loc_env in
       if ty_var <> [Tbool] then
         raise (Error (var_id_loc, Type_mismatch ([[Tbool]], ty_var)));
       let te = type_expr node_env loc_env e in
-      { texpr_desc = TE_when (te, b, (var_id, var_id_loc));
-        texpr_type = te.texpr_type;
-        texpr_loc = loc }
+      mkexpr (TE_when (te, b, (lid, var_id_loc))) te.texpr_type
     with Not_found ->
       raise (Error (var_id_loc, Undeclared_ident var_id))
     end
   | PE_merge ((var_id, var_id_loc), ift, iff) ->
     begin try
-      let ty_var = Env.find var_id loc_env in
+      let ty_var,lid = Env.find var_id loc_env in
       if ty_var <> [Tbool] then
         raise (Error (var_id_loc, Type_mismatch ([[Tbool]], ty_var)));
       let tift = type_expr node_env loc_env ift in
@@ -103,26 +105,25 @@ let rec type_expr node_env loc_env { pexpr_desc = pdesc; pexpr_loc = loc } =
       if tift.texpr_type <> tiff.texpr_type then
         raise (Error (tiff.texpr_loc,
           Type_mismatch ([tift.texpr_type], tiff.texpr_type)));
-      { texpr_desc = TE_merge ((var_id, var_id_loc), tift, tiff);
-        texpr_type = tift.texpr_type;
-        texpr_loc = loc }
+      mkexpr (TE_merge ((lid, var_id_loc), tift, tiff)) tift.texpr_type
     with Not_found ->
       raise (Error (var_id_loc, Undeclared_ident var_id))
     end
+  | PE_if (cond_id_loc, ift, iff) ->
+      (* Desugar to merge and when *)
+      let ift' = { ift with pexpr_desc =
+        PE_when (ift, true, cond_id_loc) }
+      in
+      let iff' = { iff with pexpr_desc =
+        PE_when (iff, false, cond_id_loc) }
+      in
+      let desc =
+        PE_merge (cond_id_loc, ift', iff')
+      in
+      type_expr node_env loc_env { pexpr_desc = desc; pexpr_loc = loc }
 
 and type_op node_env loc_env o expr_list =
   match o, expr_list with
-  | Op_if, [cond;ift;iff] ->
-      let t_cond = type_expr node_env loc_env cond in
-      if t_cond.texpr_type <> [Tbool] then
-        raise (Error (cond.pexpr_loc, Type_mismatch ([[Tbool]],
-          t_cond.texpr_type)));
-      let t_e1 = type_expr node_env loc_env ift in
-      let t_e2 = type_expr node_env loc_env iff in
-      if t_e1.texpr_type <> t_e2.texpr_type then
-        raise (Error (iff.pexpr_loc, Type_mismatch ([t_e1.texpr_type],
-          t_e2.texpr_type)));
-      (TE_op (Op_if, [t_cond; t_e1; t_e2]), t_e1.texpr_type)
   | Op_not, [e] ->
       let { texpr_type = ty } as t_e = type_expr node_env loc_env e in
       if ty <> [Tbool] then
@@ -163,58 +164,34 @@ and type_op node_env loc_env o expr_list =
       assert false
 
 let add_idents ids env =
-  let add env (id,bty) = Env.add id [bty] env in
+  let add env (id,bty) = Env.add id ([bty], fresh_id id) env in
   List.fold_left add env ids
 
-let t_patt_of_p_patt { ppatt_desc = desc; ppatt_loc = loc } =
-  let tdesc = match desc with
-  | PP_ident id -> TP_ident id
-  | PP_tuple ids -> TP_tuple ids
-  in
-  { tpatt_desc = tdesc; tpatt_loc = loc }
+let t_patt_of_p_patt env { ppatt_idents = ids; ppatt_loc = loc } =
+  let t_ids = List.map (fun id -> snd @@ Env.find id env) ids in
+  { tpatt_idents = t_ids; tpatt_loc = loc }
 
 (* [type_equation node_env loc_env equ] checks that the identifiers defined by
  * [equ] are present in [loc_env], that they are associated with the right
  * type, and returns the typed equations if there is no error.
  *)
 let type_equation node_env loc_env { peq_patt = pat; peq_expr = e } =
-  match pat.ppatt_desc with
-  | PP_ident id ->
-    begin try
-      let expected_ty = Env.find id loc_env in
-      let te = type_expr node_env loc_env e in
-      if te.texpr_type <> expected_ty then
-        raise (Error (te.texpr_loc,
-          Type_mismatch ([expected_ty], te.texpr_type)));
-      { teq_patt = t_patt_of_p_patt pat;
-        teq_expr = te }
-    with Not_found ->
-      raise (Error (pat.ppatt_loc, Undeclared_ident id))
-    end
-  | PP_tuple ids ->
-    begin
-      (* Expected type is the flattened tuple of all declared types *)
-      let expected_ty = List.concat @@ List.map
-        (fun id ->
-          try Env.find id loc_env
-          with Not_found ->
-            raise (Error (pat.ppatt_loc, Undeclared_ident id))
-        )
-        ids
-      in
-      let te = type_expr node_env loc_env e in
-      if te.texpr_type <> expected_ty then
-        raise (Error (pat.ppatt_loc,
-          Type_mismatch ([expected_ty], te.texpr_type)));
-      { teq_patt = t_patt_of_p_patt pat;
-        teq_expr = te }
-    end
-
-(* Idents defined by an equation *)
-let defined_idents { teq_patt = pat } =
-  match pat.tpatt_desc with
-  | TP_ident id -> [id]
-  | TP_tuple ids -> ids
+  (* Expected type is the flattened tuple of all declared types *)
+  let tys,ids = List.split @@ List.map
+    (fun id ->
+      try Env.find id loc_env
+      with Not_found ->
+        raise (Error (pat.ppatt_loc, Undeclared_ident id))
+    )
+    pat.ppatt_idents
+  in
+  let expected_ty = List.concat @@ tys in
+  let te = type_expr node_env loc_env e in
+  if te.texpr_type <> expected_ty then
+    raise (Error (pat.ppatt_loc,
+      Type_mismatch ([expected_ty], te.texpr_type)));
+  { teq_patt = t_patt_of_p_patt loc_env pat;
+    teq_expr = te }
 
 let first_duplicate l =
   let rec aux acc = function
@@ -225,7 +202,7 @@ let first_duplicate l =
   in
   aux [] l
 
-module StringSet = Set.Make(String)
+module IdentSet = Set.Make(IdentOrd)
 
 (* This function checks that:
    * no node of this name is in scope
@@ -247,6 +224,12 @@ let type_node node_env node =
   end;
   (* Add all declared identifiers to the environment *)
   let loc_env = add_idents declared Env.empty in
+  let str_to_idents l =
+    List.map (fun (str,bty) -> (snd (Env.find str loc_env), bty)) l
+  in
+  let inputs = str_to_idents node.pn_input in
+  let outputs = str_to_idents node.pn_output in
+  let locals = str_to_idents node.pn_local in
   (* For every equation, check that the defined identifiers are declared and
    * that the types match. *)
   let typed_equs = List.map
@@ -254,17 +237,19 @@ let type_node node_env node =
     node.pn_equs
   in
   (* Check that there all declared identifiers are defined by an equation. *)
-  let to_define = List.map fst @@ node.pn_output @ node.pn_local in
-  let defined = List.concat @@ List.map defined_idents typed_equs in
-  let undef =
-    StringSet.diff (StringSet.of_list to_define) (StringSet.of_list defined)
+  let to_define = List.map fst @@ outputs @ locals in
+  let defined = List.concat @@
+    List.map (fun eq -> eq.teq_patt.tpatt_idents) typed_equs
   in
-  if not (StringSet.is_empty undef) then
-    raise (Error (node.pn_loc, Undefined_local (StringSet.choose undef)));
+  let undef =
+    IdentSet.diff (IdentSet.of_list to_define) (IdentSet.of_list defined)
+  in
+  if not (IdentSet.is_empty undef) then
+    raise (Error (node.pn_loc, Undefined_local (IdentSet.choose undef)));
   { tn_name = node.pn_name;
-    tn_input = node.pn_input;
-    tn_output = node.pn_output;
-    tn_local = node.pn_local;
+    tn_input = inputs;
+    tn_output = outputs;
+    tn_local = locals;
     tn_equs = typed_equs;
     tn_loc = node.pn_loc }
 
@@ -304,5 +289,5 @@ let report_error fmt = function
   | Duplicate_local_decl id ->
       fprintf fmt "Identifier '%s' was already declared in this node." id
   | Undefined_local id ->
-      fprintf fmt "Identifier '%s' was declared in the node, but not defined."
-        id
+      fprintf fmt "Identifier '%a' was declared in the node, but not defined."
+        fmt_ident id

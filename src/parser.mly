@@ -5,7 +5,7 @@
 
   let loc () = symbol_start_pos (), symbol_end_pos ()
   let mk_expr e = { pexpr_desc = e; pexpr_loc = loc () }
-  let mk_patt p = { ppatt_desc = p; ppatt_loc = loc () }
+  let mk_patt p = { ppatt_idents = p; ppatt_loc = loc () }
 
 %}
 
@@ -149,9 +149,9 @@ eq:
 
 pattern:
 | IDENT
-    { mk_patt (PP_ident $1) }
+    { mk_patt [$1] }
 | LPAREN IDENT COMMA ident_comma_list RPAREN
-    { mk_patt (PP_tuple($2::$4)) }
+    { mk_patt ($2::$4) }
 ;
 
 expr:
@@ -163,8 +163,8 @@ expr:
     { mk_expr (PE_ident $1)}
 | IDENT LPAREN expr_comma_list_empty RPAREN
     { mk_expr (PE_app ($1, $3))}
-| IF expr THEN expr ELSE expr
-    { mk_expr (PE_op (Op_if, [$2; $4; $6])) }
+| IF localized_ident THEN expr ELSE expr
+    { mk_expr (PE_if ($2, $4, $6)) }
 | expr PLUS expr
     { mk_expr (PE_op (Op_add, [$1; $3])) }
 | expr MINUS expr
@@ -202,7 +202,7 @@ expr:
 | expr WHEN CONST_BOOL LPAREN localized_ident RPAREN
     { mk_expr (PE_when ($1, $3, $5)) }
 | MERGE localized_ident expr expr
-    { mk_expr (PE_merge ($2, $3, $3)) }
+    { mk_expr (PE_merge ($2, $3, $4)) }
 ;
 
 localized_ident:

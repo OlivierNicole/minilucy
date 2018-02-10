@@ -1,6 +1,6 @@
 node incr (tic: bool) returns (cpt: real);
 let
-  cpt = (0. -> 0. fby cpt) + merge tic (1. when true(tic)) (0. when false(tic));
+  cpt = (0. -> 0. fby cpt) + merge tic 1. 0.;
 tel;
 
 node check (x: bool) returns (ok: bool);

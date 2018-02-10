@@ -5,17 +5,18 @@
  *)
 
 open Typed_ast
+open Ident
 
 exception Scheduling
 
-module S = Set.Make(String)
+module S = Set.Make(IdentOrd)
 
 (* The graph is represented by a mapping from variable names to sets of
  * variable names. The set associated to the variable name [id] is the set of
  * direct dependencies of the equation where [id] is defined. If an equation
  * defines several variables, their will be a duplication of information in the
  * graph. For simplicity's sake, we did not try to optimize further. *)
-module M = Map.Make(String)
+module M = Map.Make(IdentOrd)
 
 let rec direct_deps expr = match expr.texpr_desc with
 | TE_const c -> S.empty
@@ -68,7 +69,7 @@ let schedule inputs equs =
   (* Construct a map associating every variable with its defining equation. *)
   let var_eq_map = List.fold_left
     (fun map eq ->
-      let defined = Typing.defined_idents eq in
+      let defined = eq.teq_patt.tpatt_idents in
       List.fold_left
         (fun map id -> M.add id eq map)
         map
@@ -80,7 +81,7 @@ let schedule inputs equs =
   (* Construct the graph of dependencies (see comment at head of file). *)
   let graph = List.fold_left
     (fun graph eq ->
-      let defined = Typing.defined_idents eq in
+      let defined = eq.teq_patt.tpatt_idents in
       let deps = direct_deps eq.teq_expr in
       (* Remove inputs from the dependencies *)
       let deps = S.diff deps input_set in

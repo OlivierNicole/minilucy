@@ -67,6 +67,9 @@ let () =
     let tf = Typing.type_file f in
     Tast_printer.file Format.std_formatter tf;
     print_newline ();
+    Format.printf "Clocking...\n%!";
+    Clocking.clock_file tf;
+    Format.printf "Clocking succeeded!\n%!";
     let scheduled = List.map
       (fun node -> schedule (List.map fst node.tn_input) node.tn_equs)
       tf
@@ -88,6 +91,8 @@ let () =
         Typing.report_error Format.err_formatter err;
         eprintf "\n";
         exit 1
+    (*
     | e ->
         eprintf "Fatal: %s\n@." (Printexc.to_string e);
         exit 2
+    *)

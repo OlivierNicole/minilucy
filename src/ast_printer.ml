@@ -28,6 +28,8 @@ let rec expr fmt exp =
       fprintf fmt "%a when %b(%s)" expr e b id
   | PE_merge ((id,_), ift, iff) ->
       fprintf fmt "merge %s (%a) (%a)" id expr ift expr iff
+  | PE_if ((id,_), ift, iff) ->
+      fprintf fmt "if %s (%a) (%a)" id expr ift expr iff
 
 and const fmt = function
   | Cbool b -> pp_print_bool fmt b
@@ -51,7 +53,6 @@ and operator fmt o =
   | Op_and -> "and"
   | Op_or -> "or"
   | Op_impl -> "=>"
-  | Op_if -> assert false (* ternary operator, not easily representable *)
 
 and op fmt o expr_list =
   (* Distinguish by arity: unary, binary or ternary *)
@@ -69,17 +70,11 @@ and op fmt o expr_list =
         fprintf fmt "%a %a %a" expr e1 operator o expr e2
     | _ -> assert false
     end
-  | Op_if ->
-    begin match expr_list with
-    | [cond;ift;iff] ->
-        fprintf fmt "if %a then %a else %a" expr cond expr ift expr iff
-    | _ -> assert false
-    end
 
 let pattern fmt pat =
-  match pat.ppatt_desc with
-  | PP_ident id -> fprintf fmt "%s" id
-  | PP_tuple ids -> fprintf fmt "(%a)" (list ", " pp_print_string) ids
+  match pat.ppatt_idents with
+  | [id] -> fprintf fmt "%s" id
+  | ids -> fprintf fmt "(%a)" (list ", " pp_print_string) ids
 
 let equation fmt { peq_patt = pat; peq_expr = exp } =
   fprintf fmt "%a = %a" pattern pat expr exp

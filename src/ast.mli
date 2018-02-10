@@ -18,14 +18,12 @@ and p_expr_desc =
   | PE_tuple of p_expr list
   | PE_when of p_expr * bool * (ident * location)
   | PE_merge of (ident * location) * p_expr * p_expr
+  | PE_if of (ident * location) * p_expr * p_expr
+      (* if/then/else (will be desugared to [when] and [merge] during typing) *)
 
 type p_patt =
-  { ppatt_desc: p_patt_desc;
+  { ppatt_idents: string list;
     ppatt_loc: location; }
-
-and p_patt_desc =
-  | PP_ident of ident
-  | PP_tuple of ident list
 
 type p_equation =
     { peq_patt: p_patt;
