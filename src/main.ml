@@ -70,13 +70,8 @@ let () =
     Format.printf "Clocking...\n%!";
     Clocking.clock_file tf;
     Format.printf "Clocking succeeded!\n%!";
-    let scheduled = List.map
-      (fun node -> schedule (List.map fst node.tn_input) node.tn_equs)
-      tf
-    in
-    List.iter
-      (List.iter (Format.printf "%a\n" Tast_printer.equation))
-      scheduled
+    let scheduled_f = Scheduling.schedule_file tf in
+    Format.printf "Scheduled tree:\n%a\n" Tast_printer.file scheduled_f
   with
     | Lexical_error s ->
 	report_loc (lexeme_start_p lb, lexeme_end_p lb);

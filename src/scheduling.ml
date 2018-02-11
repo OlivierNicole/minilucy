@@ -64,7 +64,7 @@ let topological_sort var_eq_map graph =
   in
   List.rev @@ aux [] graph
 
-let schedule inputs equs =
+let schedule_equations inputs equs =
   let input_set = S.of_list inputs in
   (* Construct a map associating every variable with its defining equation. *)
   let var_eq_map = List.fold_left
@@ -95,3 +95,10 @@ let schedule inputs equs =
     equs
   in
   topological_sort var_eq_map graph
+
+let schedule_node node =
+  { node with tn_equs =
+      schedule_equations (List.map fst node.tn_input) node.tn_equs }
+
+let schedule_file nodes =
+  List.map schedule_node nodes
