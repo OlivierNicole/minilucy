@@ -84,13 +84,11 @@ let typed_ident fmt (id, ty) =
   fprintf fmt "%a : %a" fmt_ident id Asttypes.print_base_ty ty
 
 let node fmt n =
-  fprintf fmt "t_node {\n\
-    tn_name = %s;\n\
-    tn_input = %a;\n\
-    tn_output = %a;\n\
-    tn_local = %a;\n\
-    tn_equs = \n  %a;\n\
-    }"
+  fprintf fmt "node %s (%a) returns (%a);\n\
+    var %a;\n\
+    let\n  \
+    %a\n\
+    tel"
     n.tn_name
     (list ", " typed_ident) n.tn_input
     (list ", " typed_ident) n.tn_output

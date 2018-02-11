@@ -62,16 +62,15 @@ let () =
     let f = Parser.file Lexer.token lb in
     close_in c;
     if !parse_only then exit 0;
-    Ast_printer.file Format.std_formatter f;
-    Format.printf "\n\n%!";
     let tf = Typing.type_file f in
-    Tast_printer.file Format.std_formatter tf;
-    print_newline ();
+    Format.printf "Typed tree:\n%a\n\n" Tast_printer.file tf;
     Format.printf "Clocking...\n%!";
     Clocking.clock_file tf;
-    Format.printf "Clocking succeeded!\n%!";
+    Format.printf "Clocking succeeded!\n\n%!";
     let scheduled_f = Scheduling.schedule_file tf in
-    Format.printf "Scheduled tree:\n%a\n" Tast_printer.file scheduled_f
+    Format.printf "Scheduled tree:\n%a\n\n" Tast_printer.file scheduled_f;
+    let norm_f = Normalization.normalize_file scheduled_f in
+    Format.printf "Normalized tree:\n%a\n" Tast_printer.file norm_f
   with
     | Lexical_error s ->
 	report_loc (lexeme_start_p lb, lexeme_end_p lb);
