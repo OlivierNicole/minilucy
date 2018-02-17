@@ -14,7 +14,7 @@ type m_instr =
   | MI_sequence of m_instr * m_instr
   | MI_skip (* Does nothing *)
   | MI_reset of ident (* Reinitialization of an object *)
-  | MI_step of ident list * string * m_expr list
+  | MI_step of ident list * ident * m_expr list
       (* (x_1,x_2,...,x_n) = o.step(e_1,e_2,...,e_m) *)
   | MI_case of ident * m_inst * m_inst
       (* case(x) (true -> s_1) (false -> s_2) *)

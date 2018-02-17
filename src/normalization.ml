@@ -142,10 +142,11 @@ let rec normalize_expr acc toplevel expr =
   | TE_merge (localized_id, ift, iff) ->
       let iff',acc = normalize_expr acc false iff in
       let ift',acc = normalize_expr acc false ift in
+      let nb_outputs = List.length expr.texpr_type in
       if toplevel then
         { expr with texpr_desc = TE_merge (localized_id, ift', iff') },
         acc
-      else
+      else if nb_outputs = 1 then
         let nb_outputs = List.length expr.texpr_type in
         let new_ids = List.map fresh_id @@ repeat nb_outputs "merge" in
         let new_eq =
@@ -171,6 +172,8 @@ let rec normalize_expr acc toplevel expr =
             acc.ac_env
             new_ids
             expr.texpr_type; }
+      else
+
 
 (* Normalize a list of expressions. New expressions and bindings are
  * accumulated starting from the right. *)
@@ -187,10 +190,31 @@ let rec normalize_equs eqs =
   let rec aux acc = function
   | [] -> acc
   | eq :: eqs ->
-      let expr',acc = normalize_expr acc true eq.teq_expr in
-      aux
-        { acc with ac_new_eqs = { eq with teq_expr = expr' } :: acc.ac_new_eqs }
-        eqs
+    begin match eq with
+    | { teq_patt = { tpatt_idents = ids };
+        teq_expr = {texpr_desc = TE_tuple expr_list} } ->
+          (* Add one equation per identifier *)
+          let acc = List.fold_left2
+            (fun acc expr id ->
+              let expr',acc = normalize_expr acc true expr in
+              { acc with ac_new_eqs =
+                { teq_patt =
+                  { tpatt_idents = [id]; tpatt_loc = dummy_loc };
+                  teq_expr = expr'
+              } :: acc.ac_new_eqs }
+            )
+            acc
+            expr_list
+            ids
+          in
+          aux acc eqs
+    | _ ->
+          let expr',acc = normalize_expr acc true eq.teq_expr in
+          aux
+            { acc with ac_new_eqs =
+              { eq with teq_expr = expr' } :: acc.ac_new_eqs }
+            eqs
+    end
   in
   let acc = aux { ac_new_eqs = []; ac_env = Env.empty } eqs in
   List.rev acc.ac_new_eqs, acc.ac_env

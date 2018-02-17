@@ -53,10 +53,19 @@ let rec transl_eq ((m,si,j,d,s) as acc) = function
   (* x = v fby e *)
   | { teq_patt = {tpatt_idents = [x]};
       teq_expr = {texpr_desc = TE_fby (v, e) } as expr } ->
-      let c = transl_expr acc e in
-      let x_ty = List.head texpr.texpr_type in
-      Env.add x x_ty m,
-      MI_assign_state (x, ME_const v) :: si,
-      j,
-      d,
+        let c = transl_expr acc e in
+        let x_ty = List.head texpr.texpr_type in
+        Env.add x x_ty m,
+        MI_assign_state (x, ME_const v) :: si,
+        j,
+        d,
       control expr.texpr_clock (MI_assign_state (x, c)) :: s
+  | { teq_patt = {tpatt_idents = p};
+      teq_expr = {texpr_desc = TE_app (node_name, expr_list)} as expr } ->
+        let mexpr_list = List.map (transl_expr acc) expr_list in
+        let node_id = Ident.fresh "o" in
+        m,
+        MI_reset node_id :: si,
+        Env.add node_id node_name j,
+        d,
+        control expr.texpr_clock (ME_step (p, node_id, mexpr_list)) :: s
