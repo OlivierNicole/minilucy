@@ -9,3 +9,5 @@ type error =
 exception Error of location * error
 
 val clock_file : t_file -> unit
+
+val prune : clock -> clock

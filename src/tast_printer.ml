@@ -12,7 +12,7 @@ let list sep_string pp_item fmt xs : unit =
 
 let rec expr fmt exp =
   match exp.texpr_desc with
-  | TE_const c -> const fmt c
+  | TE_const c -> print_const fmt c
   | TE_ident id -> fmt_ident fmt id
   | TE_op(o,expr_list) ->
       op fmt o expr_list
@@ -24,7 +24,7 @@ let rec expr fmt exp =
   | TE_arrow(e1,e2) ->
       fprintf fmt "%a -> %a" expr e1 expr e2
   | TE_fby (c,e2) ->
-      fprintf fmt "%a fby %a" const c expr e2
+      fprintf fmt "%a fby %a" print_const c expr e2
   | TE_tuple expr_list ->
       fprintf fmt "(%a)" (list ", " expr) expr_list
   | TE_when (e, b, (id,_)) ->
@@ -32,43 +32,20 @@ let rec expr fmt exp =
   | TE_merge ((id,_), ift, iff) ->
       fprintf fmt "merge %a (%a) (%a)" fmt_ident id expr ift expr iff
 
-and const fmt = function
-  | Cbool b -> pp_print_bool fmt b
-  | Cint i -> pp_print_int fmt i
-  | Creal f -> pp_print_float fmt f
-
-and operator fmt o =
-  pp_print_string fmt @@ match o with
-  | Op_eq -> "="
-  | Op_neq -> "<>"
-  | Op_lt -> "<"
-  | Op_le -> "<="
-  | Op_gt -> ">"
-  | Op_ge -> ">="
-  | Op_add -> "+"
-  | Op_sub -> "-"
-  | Op_mul -> "*"
-  | Op_div -> "/"
-  | Op_mod -> "mod"
-  | Op_not -> "not"
-  | Op_and -> "and"
-  | Op_or -> "or"
-  | Op_impl -> "=>"
-
 and op fmt o expr_list =
   (* Distinguish by arity: unary, binary or ternary *)
   match o with
   | Op_not ->
     begin match expr_list with
     | [e] ->
-        fprintf fmt "%a %a" operator o expr e
+        fprintf fmt "%a %a" print_op o expr e
     | _ -> assert false
     end
   | Op_eq | Op_neq | Op_lt | Op_le | Op_gt | Op_ge | Op_add | Op_sub | Op_mul
   | Op_div | Op_mod | Op_and | Op_or | Op_impl ->
     begin match expr_list with
     | [e1;e2] ->
-        fprintf fmt "%a %a %a" expr e1 operator o expr e2
+        fprintf fmt "%a %a %a" expr e1 print_op o expr e2
     | _ -> assert false
     end
 

@@ -70,7 +70,9 @@ let () =
     let scheduled_f = Scheduling.schedule_file tf in
     Format.printf "Scheduled tree:\n%a\n\n" Tast_printer.file scheduled_f;
     let norm_f = Normalization.normalize_file scheduled_f in
-    Format.printf "Normalized tree:\n%a\n" Tast_printer.file norm_f
+    Format.printf "Normalized tree:\n%a\n" Tast_printer.file norm_f;
+    let machines = Translate.transl_file norm_f in
+    Format.printf "Object language:\n%a\n" Machine_printer.file machines
   with
     | Lexical_error s ->
 	report_loc (lexeme_start_p lb, lexeme_end_p lb);

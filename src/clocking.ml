@@ -108,7 +108,7 @@ let rec clock_expr loc env expr =
         repeat nb_outputs (Ck_on (ck, false, id));
       expr.texpr_clock <- repeat nb_outputs ck
 
-let clock_equation env ({ teq_patt = pat; teq_expr = expr } as eq) =
+let clock_equation env { teq_patt = pat; teq_expr = expr } =
   clock_expr expr.texpr_loc env expr;
   let defined_ids = pat.tpatt_idents in
   let expected = expr.texpr_clock in

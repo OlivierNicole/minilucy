@@ -1,11 +1,11 @@
 node incr (tic: bool) returns (cpt: real);
 let
-  cpt = (0. -> 0. fby cpt) + merge tic 1. 0.;
+  cpt = (0. fby cpt) + merge tic 1. 0.;
 tel;
 
 node check (x: bool) returns (ok: bool);
 var cpt : real;
 let
   cpt = incr(x);
-  ok = true -> ((0. fby cpt) <= cpt);
+  ok = (0. fby cpt) <= cpt;
 tel
