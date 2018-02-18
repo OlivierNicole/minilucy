@@ -142,11 +142,10 @@ let rec normalize_expr acc toplevel expr =
   | TE_merge (localized_id, ift, iff) ->
       let iff',acc = normalize_expr acc false iff in
       let ift',acc = normalize_expr acc false ift in
-      let nb_outputs = List.length expr.texpr_type in
       if toplevel then
         { expr with texpr_desc = TE_merge (localized_id, ift', iff') },
         acc
-      else if nb_outputs = 1 then
+      else
         let nb_outputs = List.length expr.texpr_type in
         let new_ids = List.map fresh_id @@ repeat nb_outputs "merge" in
         let new_eq =
@@ -172,8 +171,6 @@ let rec normalize_expr acc toplevel expr =
             acc.ac_env
             new_ids
             expr.texpr_type; }
-      else
-
 
 (* Normalize a list of expressions. New expressions and bindings are
  * accumulated starting from the right. *)
@@ -186,38 +183,108 @@ and norm_list acc expr_list =
     expr_list
     ([],acc)
 
+let fold_left3 f acc l1 l2 l3 =
+  List.fold_left2
+    (fun acc (x1,x2) x3 -> f acc x1 x2 x3)
+    acc (List.combine l1 l2) l3
+
+let combine3 l1 l2 l3 =
+  let rec aux acc l1 l2 l3 =
+  match l1,l2,l3 with
+  | [],[],[] -> acc
+  | x1::x1s, x2::x2s, x3::x3s ->
+      aux ((x1,x2,x3) :: acc) x1s x2s x3s
+  | _ -> raise (Invalid_argument "combine3")
+  in
+  List.rev @@ aux [] l1 l2 l3
+
+(* Explode tuples into several equations (works on normalized equations) *)
+let rec explode_tuples acc eq =
+  let ids = eq.teq_patt.tpatt_idents in
+  let expr = eq.teq_expr in
+  match expr.texpr_desc with
+  | TE_tuple expr_list ->
+        (* Add one equation per identifier *)
+        let acc = List.fold_left2
+          (fun acc expr id ->
+            { teq_patt =
+              { tpatt_idents = [id]; tpatt_loc = dummy_loc };
+              teq_expr = expr }
+            :: acc
+          )
+          acc
+          expr_list
+          ids
+        in
+        acc
+  | TE_merge (lid,
+      {texpr_desc = TE_tuple ift_list},
+      {texpr_desc = TE_tuple iff_list}) ->
+        fold_left3
+          (fun acc (id,bty,ck) ift iff ->
+            { teq_patt = mkpat [id];
+              teq_expr =
+                { texpr_desc = TE_merge (lid, ift, iff);
+                  texpr_type = [bty];
+                  texpr_clock = [ck];
+                  texpr_loc = dummy_loc } }
+            :: acc
+          )
+          acc
+          (combine3 ids expr.texpr_type expr.texpr_clock)
+          ift_list
+          iff_list
+  | TE_when ({texpr_desc = TE_tuple expr_list}, b, lid) ->
+      List.fold_left2
+        (fun acc (id,bty,ck) expr ->
+          { teq_patt = mkpat [id];
+            teq_expr =
+              { texpr_desc = TE_when (expr, b, lid);
+                texpr_type = [bty];
+                texpr_clock = [ck];
+                texpr_loc = dummy_loc } }
+          :: acc
+        )
+        acc
+        (combine3 ids expr.texpr_type expr.texpr_clock)
+        expr_list
+  | TE_arrow (
+      {texpr_desc = TE_tuple e1_list},
+      {texpr_desc = TE_tuple e2_list}) ->
+        fold_left3
+          (fun acc (id,bty,ck) e1 e2 ->
+            { teq_patt = mkpat [id];
+              teq_expr =
+                { texpr_desc = TE_arrow (e1,e2);
+                  texpr_type = [bty];
+                  texpr_clock = [ck];
+                  texpr_loc = dummy_loc } }
+            :: acc
+          )
+          acc
+          (combine3 ids expr.texpr_type expr.texpr_clock)
+          e1_list
+          e2_list
+  | _ ->
+      (* No tuples to explode. We just return the equation itself. *)
+      eq :: acc
+
 let rec normalize_equs eqs =
   let rec aux acc = function
   | [] -> acc
   | eq :: eqs ->
-    begin match eq with
-    | { teq_patt = { tpatt_idents = ids };
-        teq_expr = {texpr_desc = TE_tuple expr_list} } ->
-          (* Add one equation per identifier *)
-          let acc = List.fold_left2
-            (fun acc expr id ->
-              let expr',acc = normalize_expr acc true expr in
-              { acc with ac_new_eqs =
-                { teq_patt =
-                  { tpatt_idents = [id]; tpatt_loc = dummy_loc };
-                  teq_expr = expr'
-              } :: acc.ac_new_eqs }
-            )
-            acc
-            expr_list
-            ids
-          in
-          aux acc eqs
-    | _ ->
-          let expr',acc = normalize_expr acc true eq.teq_expr in
-          aux
-            { acc with ac_new_eqs =
-              { eq with teq_expr = expr' } :: acc.ac_new_eqs }
-            eqs
-    end
+      let expr',acc = normalize_expr acc true eq.teq_expr in
+      aux
+        { acc with ac_new_eqs =
+          { eq with teq_expr = expr' } :: acc.ac_new_eqs }
+        eqs
   in
   let acc = aux { ac_new_eqs = []; ac_env = Env.empty } eqs in
-  List.rev acc.ac_new_eqs, acc.ac_env
+  let norm_eqs_rev, new_env = acc.ac_new_eqs, acc.ac_env in
+  let norm_eqs = List.rev norm_eqs_rev in
+  (* Explode tuples *)
+  let exploded_eqs_rev = List.fold_left explode_tuples [] norm_eqs in
+  List.rev exploded_eqs_rev, new_env
 
 let normalize_node node =
   let equs,new_env = normalize_equs node.tn_equs in
