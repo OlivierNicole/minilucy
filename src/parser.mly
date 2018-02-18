@@ -45,8 +45,6 @@
 %token TEL
 %token THEN
 %token VAR
-%token PIPE
-%token TYPE
 %token WHEN
 %token MERGE
 
@@ -76,8 +74,7 @@ file: decs EOF { $1 }
 
 decs:
 | /* empty */       { [] }
-| node decs    { Node_decl $1 :: $2 }
-| typedecl decs { Type_decl $1 :: $2 }
+| node decs    { $1 :: $2 }
 ;
 
 
@@ -246,16 +243,4 @@ semi_opt:
     { () }
 | SEMICOL
     { () }
-;
-
-typedecl:
-| TYPE IDENT EQUAL constr_list semi_opt
-    { { pt_name = $2;
-        pt_constr = $4;
-        pt_loc = loc (); } }
-;
-
-constr_list:
-| IDENT { [$1] }
-| IDENT PIPE constr_list { $1 :: $3 }
 ;

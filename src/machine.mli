@@ -6,7 +6,6 @@ type m_expr =
   | ME_const of const
   | ME_state_var of ident
   | ME_op of op * m_expr list
-  | ME_tuple of m_expr list
 
 type m_instr =
   | MI_assign_local of ident * m_expr

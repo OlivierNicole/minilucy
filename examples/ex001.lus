@@ -1,4 +1,4 @@
-node check (x: bool) returns (OK: bool);
+node check () returns (OK: bool);
 var n1, n2: int;
 let
   n1 = 0 fby (n1 + 1);

@@ -25,7 +25,6 @@ let dummy_loc = Lexing.(dummy_pos, dummy_pos)
 module Env = Map.Make(String)
 
 type env = (base_ty * ident) Env.t
-type node_env = t_node Env.t
 
 let type_const = function
   | Cbool _ -> [Tbool]
@@ -54,7 +53,7 @@ let rec type_expr node_env loc_env { pexpr_desc = pdesc; pexpr_loc = loc } =
       mkexpr desc ty
   | PE_app (node_id, expr_list) ->
     begin try
-      let node = Env.find node_id node_env in
+      let node = List.assoc node_id node_env in
       let texpr_list = List.map (type_expr node_env loc_env) expr_list in
       (* Flatten tuples in the argument types *)
       let args_ty =
@@ -213,7 +212,7 @@ module IdentSet = Set.Make(IdentOrd)
      local types.
  *)
 let type_node node_env node =
-  if Env.mem node.pn_name node_env then
+  if List.mem_assoc node.pn_name node_env then
     raise (Error (node.pn_loc, Duplicate_node_decl node.pn_name));
   (* Check that all identifiers are declared once *)
   let declared = node.pn_local @ node.pn_output @ node.pn_input in
@@ -255,18 +254,14 @@ let type_node node_env node =
 
 let type_file file =
   let final_env = List.fold_left
-    (fun node_env node_or_type ->
-      match node_or_type with
-      | Node_decl node ->
-          let tnode = type_node node_env node in
-          Env.add tnode.tn_name tnode node_env
-      | Type_decl _ ->
-          node_env
+    (fun node_env node ->
+       let tnode = type_node node_env node in
+       node_env @ [(tnode.tn_name, tnode)]
     )
-    Env.empty
+    []
     file
   in
-  List.map snd @@ Env.bindings final_env
+  List.map snd final_env
 
 open Format
 

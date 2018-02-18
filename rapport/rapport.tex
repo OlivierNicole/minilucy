@@ -1,0 +1,214 @@
+\documentclass{article}
+
+\usepackage{fontspec}
+
+\usepackage{polyglossia}
+\setmainlanguage{french}
+
+%\usepackage{mathpartir}
+\usepackage{syntax}
+\setlength{\grammarindent}{4em}
+
+
+\title{Rapport: compilateur du langage synchrone MiniLucy vers C}
+\author{Olivier~Nicole}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+\subsection{Objet du rendu}
+
+Le compilateur que j'ai réalisé compile vers le langage C le noyau minimal
+décrit dans l'article ``Clock-directed Modular Code Generation for Synchronous
+Data-flow Languages'', avec les constructions \verb/merge/, \verb/when/ sur
+les types booléens, et augmenté du branchement \verb/if-then-else/ (qui n'est
+qu'un sucre syntaxique pour \verb/merge/ et \verb/when/).
+
+\subsection{Point de départ, aides et inspirations}
+
+Je suis parti du code du lexer et du parseur du \textit{model checker}
+\verb/lmoch/ comme proposé dans l'énoncé. J'ai également regardé le corrigé du
+TP que vous avez donné au MPRI afin de comprendre l'algorithme du tri
+topologique, bien que je l'aie réécrit à ma manière. Tout le reste du code est
+écrit par moi.
+
+J'ai échangé avec Vincent Bochet à propos des règles de typage sur les horloges,
+mais nous n'avons partagé aucun code. J'ai également reçu de l'aide de la part
+de Guerric Chupin pour la vérification des horloges et la génération de code.
+
+\section{Détail des différentes passes}
+
+\subsection{Typage}
+
+Le typage est trivial, puisqu'il n'y a pas de polymorphisme et toutes
+les variables sont déclarées avec leur type. Il s'agit donc d'une simple
+vérification.
+
+Le type d'une expression est une liste de types de base, car chaque expression
+peut être considérée comme un tuple.
+
+\subsection{Vérification des horloges}
+
+Le langage des horloges est le suivant:
+\begin{grammar}
+
+   <ck> ::= \alpha \alt `base' \alt <ck> `on' <ident>
+
+\end{grammar}
+
+Les horloges associées aux expressions sont en fait une liste d'horloges, pour
+la même raison qu'avec les types.
+
+On a ajouté les variables d'horloge, de sorte à pouvoir modifier la
+règle de typage des constantes avec \(\vdash c : \alpha \), ce qui
+permet par exemple d'éviter d'écrire, étant donné \(x\) sur l'horloge \(i\),
+\verb/(1 when i) + x/ au profit de \verb/1 + x/.
+
+Le typage des horloges est réalisé par unification destructive.
+
+% Peut-être à mettre au moment de la génération de code cette discussion.
+À noter qu'il se peut qu'une variable ait toujours une horloge
+variable après le typage. Par exemple pour ce nœud :
+% Tu corrigeras la syntaxe
+\begin{verbatim}
+node foo() return (z : int);
+var x, y : int;
+let
+  x = 0;
+  y = x;
+  z = 1;
+tel;
+\end{verbatim}
+
+\verb+x+ est une constante, donc son horloge est variable, de même
+pour \verb+y+ qui est une copie de \verb+x+. Si on rencontre une
+équation sur une horloge variable, après la vérification des horloges,
+on considère qu'elle est sur l'horloge de base.
+
+Mon intuition est que seul du code mort peut être polymorphique en horloge une
+fois l'unification terminée, étant donné que si le code est utile à la
+production de la sortie, l'horloge sera unifiée avec l'horloge de base ou une
+sous-horloge. Toutefois, je ne l'ai pas vérifié.
+
+\subsection{Ordonnancement}
+
+L'ordonnancement se résume à un tri topologique du graphe des équations et de
+leur dépendances, selon l'algorithme de Kahn.
+
+\subsection{Normalisation}
+
+On normalise aussi les applications d'opérateurs simples tels que \verb/+/. Ce
+n'est pas nécessaire pour la traduction vers C, mais j'avais commencé comme ça,
+et cela peut être utile pour la traduction vers un langage de plus bas niveau
+comme de l'assembleur ou LLVM.
+
+\subsection{Génération de code objet}
+
+La génération de code objet intermédiaire ne pose pas de problème, elle se fait
+comme dans l'article. J'ai toutefois du rajouter une passe de séparation des
+tuples en plusieurs équations qui ne semble pas présente dans l'article. Elle
+est nécessaire pour garantir que, hors applications de nœuds, toutes les
+équations ait un type de base (et pas le type d'un tuple).
+
+\subsection{Génération de code C}
+
+La génération de code C est assez directe. Pour chaque nœud, on
+commence par générer la structure qui contient son état. La mémoire d'un nœud
+contient les mémoires définies par les \verb/fby/, ainsi que les instances
+d'autres nœuds utilisées et les sorties. On intègre les sorties afin de pouvoir
+les extraire après l'application de la fonction \verb/step/. On aurait également
+pu générer une structure de résultat pour le nœud qui aurait contenu les sorties
+de ce nœud et qui aurait été renvoyé par la fonction \verb+step+, mais cela
+semblait plus compliqué.
+
+Par exemple le nœud (normalisé)~:
+
+\begin{verbatim}
+node incr (tic : bool) returns (cpt : int);
+var fb : int, merge : int;
+let
+  merge = merge tic (1 when true(tic)) (0 when false(tic))
+  fb = 0 fby cpt
+  cpt = (fb) + (merge)
+tel
+
+node check (x : bool) returns (ok : bool);
+var cpt : int, fb : int;
+let
+  cpt = incr x
+  fb = 0 fby cpt
+  ok = (fb) <= cpt
+tel
+\end{verbatim}
+
+donne~:
+
+\begin{verbatim}
+#include <stdio.h>
+#include <stdbool.h>
+
+typedef struct {
+  int cpt; int fb;
+
+} incr_state;
+
+void incr_reset(incr_state* self) {
+  self->fb = 0;
+}
+
+void incr_step(incr_state* self, bool tic) {
+  int merge;
+  if(tic) {
+    merge = 1;
+  } else {
+    merge = 0;
+  }
+
+  self->fb = self->cpt;
+  self->cpt = self->fb + merge;
+}
+
+typedef struct {
+  int fb; bool ok;
+  incr_state o;
+} check_state;
+
+void check_reset(check_state* self) {
+  incr_reset(&self->o);
+  self->fb = 0;
+}
+
+void check_step(check_state* self, bool x) {
+  int cpt;
+  incr_step(&self->o, x);
+  cpt = self->o.cpt;;
+  self->fb = cpt;
+  self->ok = self->fb <= cpt;
+}
+\end{verbatim}
+
+Le compilateur génère un code C dans le fichier \verb/out.c/. Pour simuler
+l'exécution, il est nécessaire d'y ajouter une fonction \verb/main/ à la main.
+
+\section{Limitations}
+
+Je n'ai pas pu implémenter autant de choses que je l'aurais souhaité dans ce
+compilateur. Je n'ai pas eu le temps d'implémenter la construction \verb/reset/,
+ni de coder les fonctions de test demandées par l'énoncé. Je n'ai d'ailleurs pas
+bien compris ce que ces fonctions étaient censées faire. En effet, cela aurait
+nécessité de coder un vérificateur de la sémantique opérationnelle des
+différentes représentations intermédiaires, ce qui me semblait difficile.
+
+Toutefois, j'ai mis dans le répertoire \verb/examples/ une dizaine de fichiers
+MiniLucy qui couvrent l'ensemble de la syntaxe et des points «difficiles» de la
+compilation.
+
+Également, je n'ai pas eu le temps d'implémenter les types énumérés. Les
+constructions \verb/merge/ et \verb/when/ ne fonctionnent donc que sur des types
+booléens.
+
+\end{document}

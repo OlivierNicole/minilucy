@@ -1,1 +1,3 @@
 * améliorer le rapport d'erreur pour le clocking
+* enlever les types customs du parseur
+* faire le reset de ses morts

@@ -30,7 +30,6 @@
 	"then", THEN;
 	"true", CONST_BOOL(true);
 	"var", VAR;
-        "type", TYPE;
         "when", WHEN;
         "merge", MERGE;
       ];
@@ -100,8 +99,6 @@ rule token = parse
       { EQUAL }
   | ","
       { COMMA }
-  | "|"
-      { PIPE }
   | _
       { raise (Lexical_error (lexeme lexbuf)) }
   | eof

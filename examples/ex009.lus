@@ -1,0 +1,6 @@
+node main (x : int; i : bool) returns (y : int);
+var o : int;
+let
+  o = merge i ((0 fby x) when true(i)) 0;
+  y = x;
+tel

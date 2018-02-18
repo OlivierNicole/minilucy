@@ -20,7 +20,6 @@ type error =
 exception Error of location * error
 
 type env
-type node_env
 
 val type_file : p_file -> t_file
 

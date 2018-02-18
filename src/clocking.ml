@@ -132,3 +132,8 @@ let clock_node node =
 
 let clock_file nodes =
   List.iter clock_node nodes
+
+let report_error fmt = function
+  | Clock_mismatch (ck_expect, ck_actual) ->
+      Format.fprintf fmt "Expected clock %a, but got %a."
+        Clock.fmt_clock ck_expect Clock.fmt_clock ck_actual

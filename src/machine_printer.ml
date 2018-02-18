@@ -17,12 +17,10 @@ let const fmt = function
 
 let rec expr fmt = function
   | ME_local id -> fmt_ident fmt id
-  | ME_state_var id -> fmt_ident fmt id
+  | ME_state_var id -> fprintf fmt "state(%a)" fmt_ident id
   | ME_const c -> print_const fmt c
   | ME_op (o, expr_list) ->
       fprintf fmt "op%a (%a)" print_op o (list ", " expr) expr_list
-  | ME_tuple expr_list ->
-      fprintf fmt "(%a)" (list ", " expr) expr_list
 
 let rec instr fmt = function
   | MI_assign_local (id, e) ->
@@ -55,6 +53,7 @@ let machine fmt m =
     reset () =\n\
     %a\n\
     step(%a) returns (%a) =\n\
+    var %a;\n\
     %a\n"
   m.m_name
   (list ", " typed_ident) m.m_mem
@@ -62,6 +61,7 @@ let machine fmt m =
   instr m.m_reset
   (list ", " typed_ident) m.m_step.ms_input
   (list ", " typed_ident) m.m_step.ms_output
+  (list ", " typed_ident) m.m_step.ms_local
   instr m.m_step.ms_code
 
 let file fmt machines =

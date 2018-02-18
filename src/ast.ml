@@ -37,13 +37,4 @@ type p_node =
       pn_equs: p_equation list;
       pn_loc: location; }
 
-type p_type =
-  { pt_name: ident;
-    pt_constr: ident list;
-    pt_loc: location; }
-
-type p_decl =
-  | Node_decl of p_node
-  | Type_decl of p_type
-
-type p_file = p_decl list
+type p_file = p_node list
